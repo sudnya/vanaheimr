@@ -1,0 +1,131 @@
+Vanaheimr Internal Representation (VIR) - Virtual Instruction Set
+	- Strongly typed (all registers are typed)
+	- Lightweight IR
+
+Types:
+
+i1  - one bit predicate
+i8  - eight bit int
+i16 - sixteen bit int
+i32 - thirty-two bit int
+i64 - sixty-four bit int
+f32 - IEEE754 float
+f64 - IEEE754 double
+
+Arithmetic:
+
+add  - two operand add operation
+sub  - two operand subtract operation
+mul  - two operand multiply operation
+udiv - two operand unsigned divide
+sdiv - two operand signed divide
+urem - two operand unsigned remainder
+srem - two operand signed remainder
+
+xor - two operand bitwise xor
+or  - two operand bitwise or
+and - two operand bitwise and
+
+lsl - logical shift left
+asr - sign extension shift right
+lsr - logical shift right
+
+setp{.comparison} - Compare two operands, set a predicate
+
+Control Flow:
+
+bra  - branch to a label based on a condition, indirect branching is also supported
+call - same as bra, but saves the return address in a specified register
+
+Data Manipulation:
+
+bitcast - Move one register into another of the same size, type is ignored
+fpext   - floating point conversion from f32 to f64
+fptosi  - floating point conversion to signed integer
+fptoui  - floating point conversion to unsigned integer
+fptrunc - floating point conversion from f64 to f32
+sext    - convert to a larger integer size using sign extension
+sitofp  - signed integer conversion to floating point
+trunc   - integer conversion to a smaller size
+uitofp  - unsigned integer conversion to floating point
+zext    - zero extend and integer to a larger size
+
+Memory Interaction:
+
+ld   - load instruction
+st   - store instruction
+
+Synchronization:
+
+bar    - barrier at various levels of granularity (each corresponding to a level in the thread hierarchy)
+fence  - wait until all previous memory requests are visible at the specified level in the thread hierarchy
+
+Intrinsics:
+
+intrinsic operations are opaque, they have inputs/outputs, variable latency, and do not affect control flow
+
+atom{.operation} - perform a series of operations on memory atomically
+
+Comparison Operations:
+
+Ordered operators apply to floating point or integer types (integers are
+always ordered), Unordered and IsANumber/NotANumber apply only to floating
+point types.
+
+oe  - OrderedEqual            - a == b
+one - OrderedNotEqual         - a != b
+olt - OrderedLessThan         - a <  b
+ole - OrderedLessOrEqual      - a <= b
+ogt - OrderedGreater          - a >  b
+oge - OrderedGreaterOrEqual   - a >= b
+ue  - UnorderedEqual          - a == b || isnan(a) || isnan(b)
+une - UnorderedNotEqual       - a != b || isnan(a) || isnan(b)
+ult - UnorderedLessThan       - a <  b || isnan(a) || isnan(b)
+ule - UnorderedLessOrEqual    - a <= b || isnan(a) || isnan(b)
+ugt - UnorderedGreaterThan    - a >  b || isnan(a) || isnan(b)
+uge - UnorderedGreaterOrEqual - a >= b || isnan(a) || isnan(b)
+num - IsANumber               - !isnan(a) && !isnan(b)
+nan - NotANumber              - isnan(a) || isnan(b)
+
+Atomic Operations:
+
+These take at least two operands:
+ a - the address being modified
+ b - the first input
+ c - the second input (optional)
+ d - the result (output)
+
+And  - atomic { d = [a]; [a] = b & c; }
+Or   - atomic { d = [a]; [a] = b | c; }
+Xor  - atomic { d = [a]; [a] = b ^ c; }
+Cas  - atomic { d = [a]; [a] = d == b ? c : d; }
+Exch - atomic { d = [a]; [a] = b; }
+Add  - atomic { d = [a]; [a] = b + c; }
+Inc  - atomic { d = [a]; [a] = (d >= b) ? 0 : d + 1; }
+Dec  - atomic { d = [a]; [a] = ((d == 0) || (d > b)) ? b : d - 1; }
+Min  - atomic { d = [a]; [a] = min(b, c); }
+Max  - atomic { d = [a]; [a] = max(b, c); }
+
+Comments:
+
+Is the divergence mechanism exposed in the ISA?
+ a - No, the only mechanism is a scoped barrier.
+
+How does predication work?
+ a - All instructions take a guard predicate as an input, by default this is set
+ 	to a predicate whose value is always true.  Setp's destination register must
+ 	be a predicate.
+ 
+Can we include something like a jump-and-link or whatever our favorite call
+mechanism is (needs to capture return address)? It may be useful to distinguish
+call and return branches from vanilla jump instructions.
+ a - Call instruction is added that saves the return PC in the specified register.
+ 	A return is not necessary as the ABI is abstracted at this layer.
+
+Is the idea that all operations can be predicated, or are predicates just used
+for control-flow?
+How would we support active messages (send might require list of registers, and
+might need something like halt-and-catch-fire at end of handler to liberate
+hardware context)?
+
+

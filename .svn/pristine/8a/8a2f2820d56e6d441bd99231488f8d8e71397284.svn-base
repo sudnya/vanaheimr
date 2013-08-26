@@ -1,0 +1,156 @@
+#! /usr/bin/python
+
+################################################################################
+#	\file   SConscript
+#	\author Gregory Diamos <gregory.diamos@gatech.edu>
+#   \date   Tuesday February 21, 2012
+#	\brief  The SCons master build script for Vanaheimr
+################################################################################
+
+## Hepler functions
+def config_h_build(target, source, env):
+
+	config_h_defines = env.Dictionary()
+
+	for a_target, a_source in zip(target, source):
+		config_h = file(str(a_target), "w")
+		config_h_in = file(str(a_source), "r")
+		config_h.write(config_h_in.read() % config_h_defines)
+		config_h_in.close()
+		config_h.close()
+
+#
+#
+## The script begins here
+# try to import an environment first
+try:
+	Import('env')
+except:
+	exec open("../scripts/which.py")
+	prefix = '../'
+	exec open(prefix + "scripts/build_environment.py")
+	env = Environment()
+
+# set the vanaheimr build root if a higher level script didn't already do it
+if not 'VANAHEIMR_BUILD_ROOT' in env:
+	env.Replace(VANAHEIMR_BUILD_ROOT = env['BUILD_ROOT'])
+
+# include the build directory in case of generated files
+env.AppendUnique(CPPPATH = env['VANAHEIMR_BUILD_ROOT'])
+
+# Create configure.h
+env.AlwaysBuild(env.Command('configure.h', 'configure.h.in', config_h_build))
+
+# find all source files in the source tree
+sources = []
+directories = ['vanaheimr/asm/implementation', 
+	'vanaheimr/analysis/implementation',
+	'vanaheimr/ir/implementation',
+	'vanaheimr/compiler/implementation',
+	'vanaheimr/translation/implementation',
+	'vanaheimr/transforms/implementation',
+	'vanaheimr/codegen/implementation',
+	'vanaheimr/abi/implementation',
+	'vanaheimr/machine/implementation',
+	'vanaheimr/parser/implementation']
+
+extensions = ['*.cpp']
+
+for dir in directories:
+	for ext in extensions:
+		regexp = os.path.join(dir, ext)
+		sources.extend(env.Glob(regexp))
+
+if not haveOcelot():
+	sources.extend(env.Glob('hydrazine/implementation/Timer.cpp'))
+	sources.extend(env.Glob('hydrazine/implementation/LowLevelTimer.cpp'))
+	sources.extend(env.Glob('hydrazine/implementation/debug.cpp'))
+	sources.extend(env.Glob('hydrazine/implementation/string.cpp'))
+	sources.extend(env.Glob('hydrazine/implementation/ArgumentParser.cpp'))
+
+# Set dependent libraries
+vanaheimr_dep_libs = env['EXTRA_LIBS']
+
+# Create the vanaheimr library
+libvanaheimr = env.SharedLibrary('vanaheimr', sources, LIBS=vanaheimr_dep_libs)
+
+# Install libraries
+if env['install']:
+	libvanaheimr = env.Install(
+		os.path.join(env['install_path'], "lib"), libvanaheimr)
+
+vanaheimr_dep_libs.insert(0, '-lvanaheimr')
+
+# Create programs
+programs = []
+
+if haveOcelot():
+	PTXToVIRTranslator = env.Program('ptx-to-vir-translator',
+		['vanaheimr/tools/ptx-to-vir-translator.cpp'], LIBS=vanaheimr_dep_libs)
+
+	programs.append(PTXToVIRTranslator)
+
+VanaheimrObjDump = env.Program('vir-objdump',
+	['vanaheimr/tools/vir-objdump.cpp'], LIBS=vanaheimr_dep_libs)
+VanaheimrOptimizer = env.Program('vir-optimizer',
+	['vanaheimr/tools/vir-optimizer.cpp'], LIBS=vanaheimr_dep_libs)
+VanaheimrConfig = env.Program('vanaheimr-config', \
+	['vanaheimr/tools/vanaheimr-config.cpp'], LIBS=vanaheimr_dep_libs, \
+	CXXFLAGS = env['VANAHEIMR_CONFIG_FLAGS'])
+
+programs.append(VanaheimrConfig   )
+programs.append(VanaheimrObjDump  )
+programs.append(VanaheimrOptimizer)
+
+for program in programs:
+	env.Depends(program, libvanaheimr)
+	Default(program)
+
+# Install rules
+if env['install']:
+	print 'Installing vanaheimr...'
+
+	installed = []
+	installed.append(libvanaheimr)
+	
+	for program in programs:
+		installed.append(env.Install(os.path.join( \
+			env['install_path'], "bin"), program))
+	
+	# find all header files in the source tree
+	headers = []
+	directories = ['vanaheimr/asm/interface', 
+		'vanaheimr/ir/interface',
+		'vanaheimr/compiler/interface',
+		'vanaheimr/translation/interface',
+		'vanaheimr/analysis/interface',
+		'vanaheimr/asm/interface',
+		'vanaheimr/util/interface',
+		'vanaheimr/transforms/interface',
+		'vanaheimr/codegen/interface',
+		'vanaheimr/abi/interface',
+		'vanaheimr/machine/interface',
+		'vanaheimr/parser/interface' ]
+	if not haveOcelot():
+		directories.append('hydrazine/interface')
+
+	extensions = ['*.h']
+
+	for dir in directories:
+		for ext in extensions:
+			regexp = os.path.join(dir, ext)
+			headers.extend(env.Glob(regexp))
+		
+	for header in headers:
+		(directoryPath, headerName) = os.path.split( \
+			os.path.relpath(str(header), prefix))
+
+		installed.append(env.Install(os.path.join( \
+			env['install_path'], "include", directoryPath), header))
+
+	for i in installed:
+		env.AddPostAction(str(i), Chmod(str(i), 0644))
+	
+	install_alias = env.Alias('install', env['install_path'])
+	Default(install_alias)
+

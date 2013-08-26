@@ -1,0 +1,78 @@
+
+#! /usr/bin/python
+
+################################################################################
+#    \file   SConscript
+#    \author Sudnya Padalikar <mailsudnya@gmail.com> 
+#   \date   Sunday April 8, 2012 
+#    \brief  The SCons master build script for Baldr
+################################################################################
+
+#
+#
+## The script begins here
+# try to import an environment first
+try:
+    Import('env')
+except:
+    exec open("../scripts/which.py")
+    prefix = '../'
+    exec open(prefix + "scripts/build_environment.py")
+    env = Environment()
+
+# find all source files in the source tree
+sources = []
+directories = ['baldr/implementation']
+
+extensions = ['*.cpp']
+
+for dir in directories:
+    for ext in extensions:
+        regexp = os.path.join(dir, ext)
+        sources.extend(env.Glob(regexp))
+
+# Set dependent libraries
+baldr_dep_libs = env['EXTRA_LIBS']
+
+# Create the baldr library
+libbaldr = env.SharedLibrary('baldr', sources, LIBS=baldr_dep_libs)
+
+# Install libraries
+if 'install' in COMMAND_LINE_TARGETS:
+    libbaldr = env.Install(
+        os.path.join(env['install_path'], "lib"), libbaldr)
+
+baldr_dep_libs.insert(0, '-lbaldr')
+
+# Create programs
+TestSphere = env.Program('test-sphere',
+	['baldr/test/TestSphere.cpp'], LIBS=baldr_dep_libs)
+
+# Install rules
+if 'install' in COMMAND_LINE_TARGETS:
+    print 'Installing baldr...'
+
+    installed = []
+    installed.append(libbaldr)
+
+    # find all header files in the source tree
+    headers = []
+    directories = ['baldr/interface'] 
+    extensions = ['*.h']
+
+    for dir in directories:
+        for ext in extensions:
+            regexp = os.path.join(dir, ext)
+            headers.extend(env.Glob(regexp))
+        
+    for header in headers:
+        (directoryPath, headerName) = os.path.split( \
+            os.path.relpath(str(header), prefix))
+        installed.append(env.Install(os.path.join( \
+            env['install_path'], "include", directoryPath), header))
+
+    for i in installed:
+        env.AddPostAction(str(i), Chmod(str(i), 0644))
+    
+    env.Alias('install', env['install_path'])
+

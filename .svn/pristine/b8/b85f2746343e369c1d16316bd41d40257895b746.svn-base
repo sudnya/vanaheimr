@@ -1,0 +1,93 @@
+#! /usr/bin/python
+
+################################################################################
+#	\file   SConscript
+#	\author Gregory Diamos <gregory.diamos@gatech.edu>
+#   \date   Tuesday February 21, 2012
+#	\brief  The SCons master build script for Vanaheimr
+################################################################################
+
+#
+#
+## The script begins here
+# try to import an environment first
+try:
+	Import('env')
+except:
+	exec open("../scripts/which.py")
+	prefix = '../'
+	exec open(prefix + "scripts/build_environment.py")
+	env = Environment()
+
+# find all source files in the source tree
+sources = []
+directories = ['vanaheimr/asm/implementation', 
+	'vanaheimr/ir/implementation',
+	'vanaheimr/compiler/implementation',
+	'vanaheimr/translation/implementation']
+extensions = ['*.cpp']
+
+for dir in directories:
+	for ext in extensions:
+		regexp = os.path.join(dir, ext)
+		sources.extend(env.Glob(regexp))
+
+# Set dependent libraries
+vanaheimr_dep_libs = env['EXTRA_LIBS']
+
+# Create the vanaheimr library
+libvanaheimr = env.SharedLibrary('vanaheimr', sources, LIBS=vanaheimr_dep_libs)
+
+# Install libraries
+if 'install' in COMMAND_LINE_TARGETS:
+	libvanaheimr = env.Install(
+		os.path.join(env['install_path'], "lib"), libvanaheimr)
+
+vanaheimr_dep_libs.insert(0, '-lvanaheimr')
+
+# Create programs
+PTXToVIRTranslator = env.Program('ptx-to-vir-translator',
+	['vanaheimr/tools/ptx-to-vir-translator.cpp'], LIBS=vanaheimr_dep_libs)
+env.Depends(PTXToVIRTranslator, libvanaheimr)
+VanaheimrObjDump = env.Program('vir-objdump',
+	['vanaheimr/tools/vir-objdump.cpp'], LIBS=vanaheimr_dep_libs)
+env.Depends(VanaheimrObjDump, libvanaheimr)
+
+Default(PTXToVIRTranslator)
+Default(VanaheimrObjDump)
+
+# Install rules
+if 'install' in COMMAND_LINE_TARGETS:
+	print 'Installing vanaheimr...'
+
+	installed = []
+	installed.append(libvanaheimr)
+	installed.append(env.Install(os.path.join( \
+		env['install_path'], "bin"), PTXToVIRTranslator))
+	installed.append(env.Install(os.path.join( \
+		env['install_path'], "bin"), VanaheimrObjDump))
+
+	# find all header files in the source tree
+	headers = []
+	directories = ['vanaheimr/asm/interface', 
+		'vanaheimr/ir/interface',
+		'vanaheimr/compiler/interface',
+		'vanaheimr/translation/interface' ]
+	extensions = ['*.h']
+
+	for dir in directories:
+		for ext in extensions:
+			regexp = os.path.join(dir, ext)
+			headers.extend(env.Glob(regexp))
+		
+	for header in headers:
+		(directoryPath, headerName) = os.path.split( \
+			os.path.relpath(str(header), prefix))
+		installed.append(env.Install(os.path.join( \
+			env['install_path'], "include", directoryPath), header))
+
+	for i in installed:
+		env.AddPostAction(str(i), Chmod(str(i), 0644))
+	
+	env.Alias('install', env['install_path'])
+

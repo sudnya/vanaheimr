@@ -1,0 +1,12 @@
+/* configure.h.in.  Generated from configure.in by autoheader.  */
+
+/* Version number of package */
+#define PACKAGE_VERSION "%(VERSION)s"
+
+/* Determine if Ocelot support is compiled in */
+#if %(HAVE_OCELOT)d
+#define HAVE_OCELOT 1
+#else 
+#define HAVE_OCELOT 0
+#endif
+

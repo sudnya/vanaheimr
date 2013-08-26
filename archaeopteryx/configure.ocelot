@@ -1,0 +1,49 @@
+{
+	ocelot: "ocelot",
+	trace: { 
+		database: "traces-ipdom/database.trace",
+		memoryChecker: {
+			enabled: true,
+			checkInitialization: false
+		},
+		raceDetector: {
+			enabled: false,
+			ignoreIrrelevantWrites: true
+		},
+		debugger: {
+			enabled: false,
+			kernelFilter: "archaeopteryxDriver",
+			alwaysAttach: false
+		},
+		cacheSimulator: {
+			enabled: false,
+		},
+		branch: false,
+		memory: false
+	},
+	cuda: {
+		implementation: CudaRuntime,
+		runtimeApiTrace: "trace/CudaAPI.trace"
+	},
+	executive: {
+		devices: [ emulated ],
+		port: 2011,
+		host: "127.0.0.1",
+		optimizationLevel: none,
+		workerThreadLimit: 1,
+		asynchronousKernelLaunch: True,
+		reconvergenceMechanism: "ipdom",
+		warpSize: 4
+	},
+	optimizations: {
+		subkernelSize: 1000,
+		simplifyCFG:   True,
+	},
+	checkpoint: {
+		enabled: false,
+		path: "./",
+		prefix: "TestCudaIndirectFunctionCall_",
+		suffix: ".checkpoint"
+	}
+}
+

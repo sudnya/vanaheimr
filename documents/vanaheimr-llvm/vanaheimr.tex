@@ -1,0 +1,166 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% File:   vanaheimr.tex
+% Author: Gregory Diamos
+% Date:   Saturday September 3, 2013
+% Brief:  The latex source file for the Vanaheimr compiler paper.
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\documentclass[12pt]{report}
+\documentclass[conference, 10pt]{IEEEtran}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Included Packages
+\usepackage{cite} 
+\usepackage[pdftex]{graphicx} 
+\usepackage{url}
+\usepackage{booktabs} 
+\usepackage{setspace}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Configure Document
+\topmargin      0.0in
+\headheight     0.0in
+\headsep        0.0in
+\oddsidemargin  0.0in
+\evensidemargin 0.0in
+\textheight     9.0in
+\textwidth      6.5in
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Configure Packages
+\graphicspath{{images/}} 
+\DeclareGraphicsExtensions{.pdf,.jpeg,.jpg,.png} 
+\pagenumbering{arabic}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% New Commands
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% High Level Organization (See individual sections for details) - 1000 words
+% 
+% Chapter 1) - Abstract                            - 200 words
+% Chapter 2) - Vanaheimr introduction              - 800 words
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Title and Authors
+\title{Vanaheimr\\
+A Multi-Bulk-Synchronous-Parallel Compiler
+}
+
+\author{Gregory Diamos \textit{NVIDIA} ({\small gdiamos@nvidia.com})}
+\date{\today}
+
+\maketitle
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Section 1 - 1000 words
+%\section{Introduction}
+%\label{sec:introduction}
+
+% Survey of the space
+The transition to many core computing has coincided with the growth of
+data parallel computation and the evolution of graphics processing
+units (GPUs) from special purpose devices to programmable cores. 
+The emergence of low cost programmable GPU computing substrates
+have made data parallel architectures commodity
+from embedded systems through large scale clusters such as the
+Titan~\cite{ref:titan} system hosting tens of thousands of GPU chips.
+
+The dominant programming systems involve the use of
+bulk-synchronous-parallel programming models~\cite{ref:bulk-synchronous}
+embodied by introducing synchronization (barrier) and nested parallel (kernel-launch)
+operations to existing languages like C++ and Fortran.  These data-parallel
+models implement \textit{single instruction stream multiple thread} (SIMT)
+models of computation that specify a large number of
+data-parallel threads that can be readily exploited by hardware
+multi-threading and \textit{single-instruction-multiple-data} (SIMD)
+cores. 
+
+In contrast to many-core processors based on out-of-order CPU cores,
+GPU architectures are designed to exploit the massive data-parallelism of
+bulk-synchronous programs. Performance is maximized for regular computations
+where hardware can use SIMD pipelines and bulk data updates to exploit
+control and data locality among threads.  However, current designs suffer
+from steep performance cliffs when executing programs with irregular control
+flow and data access patterns.  
+
+These performance hazards limit the potential of GPU computing. In fact,
+sequential algorithms mapped to single CPU cores are still competitive with GPUs
+for many application domains (e.g. database queries, lossless compression,
+lexing/parsing, discrete event simulation, and discrete optimization) despite a
+300x (and exponentially growing) difference in peak throughput.  Two of the most
+important problems in computing today involve designing architectures with more
+gradual performance cliffs~\cite{ref:echelon}, and designing bulk-synchronous algorithms for irregular
+applications~\cite{ref:irregular-applications}.  
+
+Vanaheimr is a project that takes an aggressive engineering approach to these
+problems. It explores the detailed design of a from-scratch reimplementation of
+the Low-Level Virtual Machine (LLVM) compiler library~\cite{ref:llvm}
+(excluding CLANG) that runs entirely on a GPU with no CPU interaction.  
+
+Vanaheimr's explicit goals are: 
+
+\begin{enumerate}
+	\item To be compatible with LLVM bytecode/assembly.
+	\item To only use algorithms and data structures that are simultaneously
+	      i) work-efficient, ii) massively parallel, and iii) map efficiently to
+	      the GPU processor architecture and memory hierarchy.
+	\item To produce compiled binaries of similar quality to the native LLVM
+	      implementation.
+	\item To self-host (eventually).
+\end{enumerate}
+
+In Vanaheimr, we frame the compilation process from LLVM IR to a
+target-specific binary as a series of bulk transformations on an IR data
+structure that leverage supporting analysis structures that are created and
+updated dynamically.  The core IR data structure retains many essential aspects
+of the original LLVM design (e.g. native SSA form, Modules, Functions, Values,
+BasicBlocks, etc), which we use as a model.  The hierarchical organization of
+the IR is exploited throughout the compilation process to avoid global
+synchronization.  IR transformations, which mimic the LLVM PassManager
+framework, perform the majority
+of their work at the lowest levels of the hierarchy (i.e. per-instruction or
+per-value), in an attempt to expose a large amount of parallelism for even
+moderately-sized programs.  We note that in general, local optimizations
+(e.g. peephole) are the easiest to map to parallel algorithms, while
+global optimizations (e.g. register allocation, partial redundancy elimination)
+are the hardest.  Therefore, most of our work targets global optimization.
+
+Although work on Vanaheimr is still at an early stage, we are ready to share
+the high level design of the compiler and report on several interesting case
+studies involving the design of individual components.  We are seeking
+feedback from the LLVM community.
+
+% Contributions
+%Vanaheimr makes the following contributions:
+
+\subsection{Outline}
+
+A Vanaheimr presentation would cover these topics. Section I briefly introduces
+the project motivation, goals, and approach.
+Section II covers the high level design of Vanaheimr, including the IR and
+analysis/optimization framework.  Section III covers detailed design and case
+studies on i) Control Flow Analysis, ii) SSA Conversion, iii) Register
+Allocation, and iv) Lexing/Parsing.  Section IV concludes with the major lessons
+learned and open questions that would benefit from community feedback.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bibliography
+\bibliographystyle{IEEEtran}
+\bibliography{vanaheimr}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
+

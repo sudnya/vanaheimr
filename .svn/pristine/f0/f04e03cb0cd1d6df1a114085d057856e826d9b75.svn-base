@@ -1,0 +1,8 @@
+--------------------------------- VANAHEIMR ------------------------------------
+
+This is the main source code tree for the vanaheimr compiler. We are starting
+with a set of C++ tools to ease initial development, and then are going to
+transition to CUDA C++.
+
+
+
